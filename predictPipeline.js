@@ -69,7 +69,7 @@ function runPredictPipeline() {
       const nihaiYazilacakVeriler = []; // Her batch için listeyi sıfırlıyoruz
 
       try {
-        const raw = callGemini(prompt, 3, false); // 3. parametre test modu bilgisi
+        const raw = callGemini(prompt, 1, false); // 3. parametre test modu bilgisi
         const results = JSON.parse(raw);
         const sonucMap = {};
 
@@ -130,7 +130,7 @@ function runPredictPipeline() {
 
         toplamYazilanKayit += nihaiYazilacakVeriler.length;
         console.log(`.. ${nihaiYazilacakVeriler.length} kayıt işlendi.`);
-        SpreadsheetApp.flush(); // Değişiklikleri hemen Google Sheets'e yansıtması için zorla
+        SpreadApp.flush(); // Değişiklikleri hemen Google Sheets'e yansıtması için zorla
       }
 
       if (i + batchSize < bekleyenler.length) {

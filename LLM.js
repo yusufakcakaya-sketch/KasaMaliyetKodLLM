@@ -54,7 +54,7 @@ function buildBatchPrompt(satirlar, costCodes, son200Ornekler) {
 }
 
 // ============================================================
-// 6. GEMİNİ API ÇAĞRISI
+// API ÇAĞRISI
 // ============================================================
 function callGemini(prompt, attempt, test = false) {
   if (test === true) {
@@ -108,7 +108,7 @@ function callGemini(prompt, attempt, test = false) {
 
   attempt = attempt || 1;
   const MAX_ATTEMPTS = 3;
-  const RETRY_CODES = [429, 500, 503];
+  const RETRY_CODES = [429, 503]; // Sadece 429 ve 503 durumlarında tekrar denenecek
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.geminiModel}:generateContent?key=${CONFIG.geminiApiKey}`;
 
@@ -148,23 +148,30 @@ function callGemini(prompt, attempt, test = false) {
 
     console.warn(`⚠️ HTTP ${code} Alındı! Detay: ${hataDetayi}`);
 
-    if (attempt < MAX_ATTEMPTS) {
-      // Bekleme süresini agresif şekilde artırıyoruz (15s, 30s...)
-      const wait = attempt * 15000;
+    if (attempt <= MAX_ATTEMPTS) {
+      let wait = 0;
+
+      // Hata koduna göre bekleme sürelerinin ayarlanması
+      if (code === 503) {
+        wait = 60000; // 503 için her zaman 1 dakika (60.000 ms)
+      } else if (code === 429) {
+        // 429 için sırasıyla 1, 2, 4 dakika (60.000, 120.000, 240.000 ms)
+        if (attempt === 1) wait = 60000;
+        else if (attempt === 2) wait = 120000;
+        else if (attempt === 3) wait = 240000;
+      }
+
       console.log(
-        `⏳ ${attempt}. deneme başarısız. ${wait / 1000} saniye bekleniyor...`,
+        `⏳ ${attempt}. deneme başarısız. HTTP ${code} nedeniyle ${wait / 1000 / 60} dakika bekleniyor...`,
       );
       Utilities.sleep(wait);
       return callGemini(prompt, attempt + 1);
     }
 
-    if (code === 429) {
-      throw new Error(`RATE_LIMIT: Google kotası aşıldı. Mesaj: ${hataDetayi}`);
-    } else {
-      throw new Error(
-        `API Hata ${code} — ${MAX_ATTEMPTS} denemede çözülemedi.`,
-      );
-    }
+    // Maksimum deneme aşılmasına rağmen çözülemediyse hata fırlatılır (pipeline bunu yakalayıp sayfaya basacak)
+    throw new Error(
+      `API Hata ${code} — ${MAX_ATTEMPTS} denemede çözülemedi. Mesaj: ${hataDetayi}`,
+    );
   }
 
   if (code !== 200) throw new Error(`API Hata ${code}: ${raw}`);
