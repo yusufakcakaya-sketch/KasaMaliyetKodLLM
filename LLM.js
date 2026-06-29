@@ -1,6 +1,3 @@
-// Kaynak dosya ID'leri
-const PROC_SS_ID = "1lYBWsIfqriaox3H-y6M3irufpLibaw9KflPopPfScTI";
-
 // ============================================================
 // YARDIMCI: Sayfayı al, yoksa oluştur
 // ============================================================
@@ -120,21 +117,74 @@ function buildBatchPrompt(satirlar, costCodes, son200Ornekler) {
 // 6. GEMİNİ API ÇAĞRISI
 // ============================================================
 function callGemini(prompt, attempt) {
+  console.log("🤖 [BYPASS MODU] API'ye gidilmedi, sahte yanıt üretiliyor...");
+
+  // Eğer gelen prompt bir Batch (toplu) promptu ise (içinde HARCAMA_ kelimesi veya [ ] aranır)
+  if (prompt.includes("HARCAMA_") || prompt.includes("[")) {
+    // Prompt içindeki satır numaralarını yakalamaya çalışalım
+    const satirNoEslenikleri = [...prompt.matchAll(/satir_no:\s*(\d+)/g)];
+
+    let sahteBatchDizisi = [];
+
+    if (satirNoEslenikleri.length > 0) {
+      // Prompt içinden gerçek satır numaralarını ayıklayıp ona göre JSON üretiyoruz
+      sahteBatchDizisi = satirNoEslenikleri.map((m) => {
+        return {
+          satir_no: parseInt(m[1]),
+          kategori: "TEST_MALIYET_KODU",
+          guven: "yüksek",
+          aciklama: "Bypass modu ile başarılı simülasyon satırı.",
+        };
+      });
+    } else {
+      // Eğer regex bulamazsa varsayılan test satırları (Grup eleman sayısına göre fallback)
+      sahteBatchDizisi = [
+        {
+          satir_no: 4751,
+          kategori: "TEST_MALIYET_KODU",
+          guven: "yüksek",
+          aciklama: "Sahte veri",
+        },
+        {
+          satir_no: 4752,
+          kategori: "TEST_MALIYET_KODU",
+          guven: "yüksek",
+          aciklama: "Sahte veri",
+        },
+        {
+          satir_no: 4753,
+          kategori: "TEST_MALIYET_KODU",
+          guven: "yüksek",
+          aciklama: "Sahte veri",
+        },
+      ];
+    }
+
+    return JSON.stringify(sahteBatchDizisi);
+  }
   attempt = attempt || 1;
   const MAX_ATTEMPTS = 3;
   const RETRY_CODES = [429, 500, 503];
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.geminiModel}:generateContent?key=${CONFIG.geminiApiKey}`;
 
+  // Kabaca token hesabı yapıp loglayalım (Karakter / 4)
+  const tahminiToken = Math.round(prompt.length / 4);
+  if (attempt === 1) {
+    console.log(
+      `ℹ️ API'ye istek gönderiliyor... (~${tahminiToken} girdi tokenı)`,
+    );
+  }
+
   const res = UrlFetchApp.fetch(url, {
     method: "POST",
     contentType: "application/json",
-    muteHttpExceptions: true,
+    muteHttpExceptions: true, // Hata kodlarını yakalamak için şart
     payload: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0,
-        thinkingConfig: { thinkingBudget: 0 }, // Sınıflandırma için reasoning gereksiz
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
@@ -142,18 +192,30 @@ function callGemini(prompt, attempt) {
   const code = res.getResponseCode();
   const raw = res.getContentText();
 
+  // 429 veya Sunucu Hataları Durumunda Exponential Backoff
   if (RETRY_CODES.includes(code)) {
+    let hataDetayi = "";
+    try {
+      const parsedRaw = JSON.parse(raw);
+      hataDetayi = parsedRaw.error?.message || raw;
+    } catch (e) {
+      hataDetayi = raw.substring(0, 200);
+    }
+
+    console.warn(`⚠️ HTTP ${code} Alındı! Detay: ${hataDetayi}`);
+
     if (attempt < MAX_ATTEMPTS) {
-      const wait = attempt * 10000;
+      // Bekleme süresini agresif şekilde artırıyoruz (15s, 30s...)
+      const wait = attempt * 15000;
       console.log(
-        `⚠️ HTTP ${code} — ${attempt}. deneme, ${wait / 1000}s bekleniyor...`,
+        `⏳ ${attempt}. deneme başarısız. ${wait / 1000} saniye bekleniyor...`,
       );
       Utilities.sleep(wait);
       return callGemini(prompt, attempt + 1);
     }
-    // Maksimum deneme bittikten sonra hata koduna göre spesifik mesaj fırlatıyoruz
+
     if (code === 429) {
-      throw new Error("RATE_LIMIT");
+      throw new Error(`RATE_LIMIT: Google kotası aşıldı. Mesaj: ${hataDetayi}`);
     } else {
       throw new Error(
         `API Hata ${code} — ${MAX_ATTEMPTS} denemede çözülemedi.`,
@@ -248,7 +310,8 @@ function categorizeNewRows(batchSize) {
     done += basarili;
 
     if (i + batchSize < bekleyenler.length) {
-      Utilities.sleep(batchSize === 1 ? 300 : 600);
+      // RPM koruması amacıyla ana döngü bekleme süreleri uzatıldı
+      Utilities.sleep(batchSize === 1 ? 2500 : 4500);
     }
   }
 
@@ -390,7 +453,7 @@ function aktarVeKategorize(batchSize) {
 
 // ============================================================
 // 9. MANUEL ÇALIŞTIRMA KISAYOLLARI
-//    Apps Script editöründe bunları dropdown'dan seçebilirsiniz
+//     Apps Script editöründe bunları dropdown'dan seçebilirsiniz
 // ============================================================
 
 // Satır satır (en güvenli, en yavaş)
