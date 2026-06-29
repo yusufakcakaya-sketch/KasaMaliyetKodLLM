@@ -10,8 +10,8 @@ const KASA_SS_ID = "1Ytfqlh3KAWGrvA5GHf6PvJN0IxzZe8deeiJwHeSpUbU"; //test
 const CONFIG = {
   geminiApiKey:
     PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY"),
-  // geminiModel: "gemini-3.5-flash",
-  geminiModel: "gemini-2.5-flash",
+  geminiModel: "gemini-3.5-flash", // dakikada 5 istek.
+  // geminiModel: "gemini-2.5-flash",
   // geminiModel: "gemini-2.0-flash",
 
   sheets: {
@@ -42,6 +42,6 @@ const CONFIG = {
     kategori: 5, // F
   },
 
-  son200Boyutu: 20,
+  son200Boyutu: 200,
   defaultBatchSize: 5, // 0 = toplu, N = N'li gruplar
 };

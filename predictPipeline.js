@@ -51,10 +51,10 @@ function runPredictPipeline() {
     // Başlık satırı kontrolünü döngü öncesine alıyoruz (Eğer sayfa boşsa başlığı hemen yaz)
     if (maliyetTahminSheet.getLastRow() === 0) {
       maliyetTahminSheet.appendRow([
-        "işlemId",
-        "kasa açıklaması",
-        "tahmin değeri",
-        "güven",
+        "İşlem ID",
+        "Kasa Açıklaması",
+        "Maliyet Kodu Tahmini",
+        "Güven",
       ]);
     }
 
