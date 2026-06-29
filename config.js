@@ -11,8 +11,7 @@ const CONFIG = {
   geminiApiKey:
     PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY"),
   // geminiModel: "gemini-3.5-flash",
-  // geminiModel: "gemini-2.5-flash",
-  geminiModel: "gemini-1.5-flash",
+  geminiModel: "gemini-2.5-flash",
   // geminiModel: "gemini-2.0-flash",
 
   sheets: {
