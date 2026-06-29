@@ -48,17 +48,28 @@ function runPredictPipeline() {
       return;
     }
 
+    // Başlık satırı kontrolünü döngü öncesine alıyoruz (Eğer sayfa boşsa başlığı hemen yaz)
+    if (maliyetTahminSheet.getLastRow() === 0) {
+      maliyetTahminSheet.appendRow([
+        "işlemId",
+        "kasa açıklaması",
+        "tahmin değeri",
+        "güven",
+      ]);
+    }
+
     // 3. Hafızada Tahminleme ve Gruplama (Batch) İşlemleri
     const batchSize = CONFIG.defaultBatchSize || 5;
-    const nihaiYazilacakVeriler = [];
     const col = CONFIG.col;
+    let toplamYazilanKayit = 0; // İstatistik takibi için sayaç
 
     for (let i = 0; i < bekleyenler.length; i += batchSize) {
       const grup = bekleyenler.slice(i, i + batchSize);
       const prompt = buildBatchPrompt(grup, costCodes, filtrelenmisSon200);
+      const nihaiYazilacakVeriler = []; // Her batch için listeyi sıfırlıyoruz
 
       try {
-        const raw = callGemini(prompt);
+        const raw = callGemini(prompt, 3, false); // 3. parametre test modu bilgisi
         const results = JSON.parse(raw);
         const sonucMap = {};
 
@@ -78,45 +89,50 @@ function runPredictPipeline() {
               sonuc.guven,
             ]);
           } else {
+            // Model ayakta ama bu satırı bir sebeple atladıysa: Tahmin boş, Güven sütununa sadece kod/etiket yazılır
             nihaiYazilacakVeriler.push([
               item.islemId,
               String(item.satir[col.kasa_aciklama]),
-              "HATA: Model satırı atladı",
-              "düşük",
+              "",
+              "M_ATLA",
             ]);
           }
         });
       } catch (batchError) {
-        console.log(
-          `Batch hatası, tekli işleme dönülüyor: ${batchError.message}`,
+        console.error(
+          `Batch hatası alındı, bu grup hata durumunda e-tabloya yazılıyor: ${batchError.message}`,
         );
 
-        grup.forEach((item) => {
-          const singlePrompt = buildPrompt(
-            item.satir,
-            costCodes,
-            filtrelenmisSon200,
-          );
-          try {
-            const rawSingle = callGemini(singlePrompt);
-            const resSingle = JSON.parse(rawSingle);
+        // Hata mesajı içinden sadece HTTP kodunu (örn: 404, 429 vb.) ayıklıyoruz
+        const errorMsg = batchError.message || "";
+        const codeMatch = errorMsg.match(
+          /\b(400|401|403|404|429|500|503|504)\b/,
+        );
+        const sadeceKod = codeMatch ? `HTTP ${codeMatch[0]}` : "API_HATA";
 
-            nihaiYazilacakVeriler.push([
-              item.islemId,
-              String(item.satir[col.kasa_aciklama]),
-              resSingle.kategori,
-              resSingle.guven,
-            ]);
-          } catch (singleError) {
-            nihaiYazilacakVeriler.push([
-              item.islemId,
-              String(item.satir[col.kasa_aciklama]),
-              `HATA: ${singleError.message}`,
-              "düşük",
-            ]);
-          }
-          Utilities.sleep(300);
+        // API çöktüyse gruptaki tüm satırları e-tabloya "Tahmin Boş, Güven = Sadece Hata Kodu" şeklinde ekliyoruz
+        grup.forEach((item) => {
+          nihaiYazilacakVeriler.push([
+            item.islemId,
+            String(item.satir[col.kasa_aciklama]),
+            "",
+            sadeceKod,
+          ]);
         });
+      }
+
+      // 4. Mevcut Batch Sonuçlarını ANLIK Olarak "MaliyetTahmin" Sayfasına Yazma
+      if (nihaiYazilacakVeriler.length > 0) {
+        const baslangicSatiri = maliyetTahminSheet.getLastRow() + 1;
+        maliyetTahminSheet
+          .getRange(baslangicSatiri, 1, nihaiYazilacakVeriler.length, 4)
+          .setValues(nihaiYazilacakVeriler);
+
+        toplamYazilanKayit += nihaiYazilacakVeriler.length;
+        console.log(
+          `.. ${nihaiYazilacakVeriler.length} kayıt sayfaya anlık işlendi.`,
+        );
+        SpreadsheetApp.flush(); // Değişiklikleri hemen Google Sheets'e yansıtması için zorla
       }
 
       if (i + batchSize < bekleyenler.length) {
@@ -124,38 +140,11 @@ function runPredictPipeline() {
       }
     }
 
-    // 4. Nihai Sonuçları Tek Seferde "MaliyetTahmin" Sayfasına Yazma
-    if (nihaiYazilacakVeriler.length > 0) {
-      if (maliyetTahminSheet.getLastRow() === 0) {
-        maliyetTahminSheet.appendRow([
-          "işlemId",
-          "kasa açıklaması",
-          "tahmin değeri",
-          "güven",
-        ]);
-      }
-
-      const baslangicSatiri = maliyetTahminSheet.getLastRow() + 1;
-      maliyetTahminSheet
-        .getRange(baslangicSatiri, 1, nihaiYazilacakVeriler.length, 4)
-        .setValues(nihaiYazilacakVeriler);
-
-      console.log(
-        `✅ İşlem başarıyla tamamlandı. ${nihaiYazilacakVeriler.length} kayıt 'MaliyetTahmin' sayfasına yazıldı.`,
-      );
-    }
+    console.log(
+      `✅ İşlem başarıyla tamamlandı. Toplam ${toplamYazilanKayit} kayıt 'MaliyetTahmin' sayfasına güvenle yazıldı.`,
+    );
   } catch (error) {
     console.error("Pipeline hatası:", error.toString());
     throw error;
   }
-}
-
-// ============================================================
-// İÇ: Hata durumunu sayfaya işaretle
-// ============================================================
-function _yazHata(sheet, rowNum, mesaj, col) {
-  sheet
-    .getRange(rowNum, col.guven + 1)
-    .setValue(`HATA: ${mesaj}`)
-    .setBackground("#EF9A9A");
 }
