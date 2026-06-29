@@ -2,14 +2,14 @@
  * Kasa dosyasındaki Data_Cash sayfasından;
  * - D sütunu "FİNANSAL İŞLEM" olmayanları
  * - E sütunu boş olanları filtreler.
- * 
+ *
  * Filtrelenen satırların J sütunundaki kodları,
  * Proc dosyasındaki Data_Proc sayfasının AC sütununda arar.
- * 
+ *
  * Eşleşen kayıtlardan şu verileri toplar:
  * - Proc → E (kullanıcı tahmini), G (envanter), I (satın alma açıklaması)
  * - Kasa → B (kasa açıklaması), C (firma)
- * 
+ *
  * Toplanan verileri aktif dosyadaki Harcamalar sayfasına
  * mevcut verinin altına sırayla ekler.
  * Daha sonra LLM çalıştırılarak tahminleme yapılır.
@@ -32,16 +32,16 @@ const PROC_SS_ID = "1lYBWsIfqriaox3H-y6M3irufpLibaw9KflPopPfScTI";
  */
 function harcamalariAktar() {
   // --- Kaynak sayfaları aç ---
-  const kasaSS   = SpreadsheetApp.openById(KASA_SS_ID);
-  const procSS   = SpreadsheetApp.openById(PROC_SS_ID);
-  const hedefSS  = SpreadsheetApp.getActiveSpreadsheet();
+  const kasaSS = SpreadsheetApp.openById(KASA_SS_ID);
+  const procSS = SpreadsheetApp.openById(PROC_SS_ID);
+  const hedefSS = SpreadsheetApp.getActiveSpreadsheet();
 
-  const kasaSheet   = kasaSS.getSheetByName("Data_Cash");
-  const procSheet   = procSS.getSheetByName("Data_Proc");
-  const hedefSheet  = hedefSS.getSheetByName("Harcamalar");
+  const kasaSheet = kasaSS.getSheetByName("Data_Cash");
+  const procSheet = procSS.getSheetByName("Data_Proc");
+  const hedefSheet = hedefSS.getSheetByName("Harcamalar");
 
-  if (!kasaSheet)  throw new Error("'Data_Cash' sayfası bulunamadı.");
-  if (!procSheet)  throw new Error("'Data_Proc' sayfası bulunamadı.");
+  if (!kasaSheet) throw new Error("'Data_Cash' sayfası bulunamadı.");
+  if (!procSheet) throw new Error("'Data_Proc' sayfası bulunamadı.");
   if (!hedefSheet) throw new Error("'Harcamalar' sayfası bulunamadı.");
 
   // --- Kasa verisini çek ---
@@ -50,7 +50,7 @@ function harcamalariAktar() {
   // Başlık satırını atla (1. satır), filtrele:
   //   D sütunu (index 3) "FİNANSAL HAREKET" OLMAYAN
   //   E sütunu (index 4) BOŞ olan
-  const filtrelenmis = kasaData.slice(1).filter(row => {
+  const filtrelenmis = kasaData.slice(1).filter((row) => {
     const kolD = String(row[3]).trim();
     const kolE = String(row[4]).trim();
     return kolD !== "FİNANSAL HAREKET" && kolE === "";
@@ -64,12 +64,12 @@ function harcamalariAktar() {
   // Kasa filtreli satırlardan J sütunu (index 9) kodlarını topla
   // Aynı zamanda B (index 1) ve C (index 2) verilerini eşle
   const kasaMap = {}; // kod → { kasaAciklama, firma }
-  filtrelenmis.forEach(row => {
+  filtrelenmis.forEach((row) => {
     const kod = String(row[9]).trim();
     if (kod) {
       kasaMap[kod] = {
-        kasaAciklama : row[1],
-        firma        : row[2]
+        kasaAciklama: row[1],
+        firma: row[2],
       };
     }
   });
@@ -82,13 +82,13 @@ function harcamalariAktar() {
   // G  sütunu = index 6  → envanter
   // I  sütunu = index 8  → satın alma açıklaması
   const procMap = {}; // kod → { tahmin, envanter, satinAlma }
-  procData.slice(1).forEach(row => {
+  procData.slice(1).forEach((row) => {
     const kod = String(row[28]).trim();
     if (kod && kasaMap.hasOwnProperty(kod)) {
       procMap[kod] = {
-        tahmin    : row[4],
-        envanter  : row[6],
-        satinAlma : row[8]
+        tahmin: row[4],
+        envanter: row[6],
+        satinAlma: row[8],
       };
     }
   });
@@ -96,7 +96,7 @@ function harcamalariAktar() {
   // --- Harcamalar sayfasına eklenecek satırları hazırla ---
   const eklenecek = [];
 
-  Object.keys(kasaMap).forEach(kod => {
+  Object.keys(kasaMap).forEach((kod) => {
     const kasa = kasaMap[kod];
     const proc = procMap[kod];
 
@@ -107,7 +107,7 @@ function harcamalariAktar() {
       kasa.kasaAciklama,
       proc.satinAlma,
       proc.tahmin,
-      kasa.firma
+      kasa.firma,
     ]);
   });
 
