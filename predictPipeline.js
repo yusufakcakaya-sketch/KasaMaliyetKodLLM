@@ -149,3 +149,13 @@ function runPredictPipeline() {
     throw error;
   }
 }
+
+// ============================================================
+// İÇ: Hata durumunu sayfaya işaretle
+// ============================================================
+function _yazHata(sheet, rowNum, mesaj, col) {
+  sheet
+    .getRange(rowNum, col.guven + 1)
+    .setValue(`HATA: ${mesaj}`)
+    .setBackground("#EF9A9A");
+}

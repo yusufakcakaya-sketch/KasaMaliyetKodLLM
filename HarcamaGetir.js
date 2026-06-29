@@ -127,3 +127,23 @@ function ornekGetir(kasaData, procData) {
   // Son 200'ü sınırla ve geri döndür
   return satirlar.slice(-CONFIG.son200Boyutu);
 }
+
+// ============================================================
+// 1. MALİYET KODLARINI YÜKLE
+// ============================================================
+function loadCostCodes() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+    CONFIG.sheets.costCodes,
+  );
+  if (!sheet) throw new Error("CostCodes sayfası bulunamadı.");
+  return sheet
+    .getDataRange()
+    .getValues()
+    .flat()
+    .map((k) => String(k).trim())
+    .filter(Boolean);
+}
+
+function getOrCreateSheet(ss, name) {
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
