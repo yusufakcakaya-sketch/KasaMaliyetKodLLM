@@ -4,8 +4,8 @@
 
 const PROC_SS_ID = "1lYBWsIfqriaox3H-y6M3irufpLibaw9KflPopPfScTI";
 
-// const KASA_SS_ID = "1npepn6vDwHDIc03ORRg1UkGnDCUdAU0ZAtkjAUl2PR4";
-const KASA_SS_ID = "1Ytfqlh3KAWGrvA5GHf6PvJN0IxzZe8deeiJwHeSpUbU"; //test
+const KASA_SS_ID = "1npepn6vDwHDIc03ORRg1UkGnDCUdAU0ZAtkjAUl2PR4";
+// const KASA_SS_ID = "1Ytfqlh3KAWGrvA5GHf6PvJN0IxzZe8deeiJwHeSpUbU"; //test
 
 const CONFIG = {
   geminiApiKey:

@@ -1,5 +1,5 @@
 // ============================================================
-// ANA İŞLEM HATTI (PIPELINE)
+// ANA İŞLEM HATTI (PIPELINE) 04.00-05.00 trigger.
 // ============================================================
 function runPredictPipeline() {
   console.log("Pipeline başlatıldı (Fonksiyonel & Modüler Versiyon).");
