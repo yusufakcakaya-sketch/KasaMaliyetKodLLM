@@ -58,30 +58,17 @@ function runPredictPipeline() {
       ]);
     }
 
-    // Başlık satırı kontrolünü döngü öncesine alıyoruz (Eğer sayfa boşsa başlığı hemen yaz)
-    if (maliyetTahminSheet.getLastRow() === 0) {
-      maliyetTahminSheet.appendRow([
-        "işlemId",
-        "kasa açıklaması",
-        "tahmin değeri",
-        "güven",
-      ]);
-    }
-
     // 3. Hafızada Tahminleme ve Gruplama (Batch) İşlemleri
     const batchSize = CONFIG.defaultBatchSize || 5;
     const col = CONFIG.col;
-    let toplamYazilanKayit = 0; // İstatistik takibi için sayaç
     let toplamYazilanKayit = 0; // İstatistik takibi için sayaç
 
     for (let i = 0; i < bekleyenler.length; i += batchSize) {
       const grup = bekleyenler.slice(i, i + batchSize);
       const prompt = buildBatchPrompt(grup, costCodes, filtrelenmisSon200);
       const nihaiYazilacakVeriler = []; // Her batch için listeyi sıfırlıyoruz
-      const nihaiYazilacakVeriler = []; // Her batch için listeyi sıfırlıyoruz
 
       try {
-        const raw = callGemini(prompt, 3, false); // 3. parametre test modu bilgisi
         const raw = callGemini(prompt, 3, false); // 3. parametre test modu bilgisi
         const results = JSON.parse(raw);
         const sonucMap = {};
@@ -103,12 +90,9 @@ function runPredictPipeline() {
             ]);
           } else {
             // Model ayakta ama bu satırı bir sebeple atladıysa: Tahmin boş, Güven sütununa sadece kod/etiket yazılır
-            // Model ayakta ama bu satırı bir sebeple atladıysa: Tahmin boş, Güven sütununa sadece kod/etiket yazılır
             nihaiYazilacakVeriler.push([
               item.islemId,
               String(item.satir[col.kasa_aciklama]),
-              "",
-              "M_ATLA",
               "",
               "M_ATLA",
             ]);
@@ -154,9 +138,6 @@ function runPredictPipeline() {
       }
     }
 
-    console.log(
-      `✅ İşlem başarıyla tamamlandı. Toplam ${toplamYazilanKayit} kayıt 'MaliyetTahmin' sayfasına güvenle yazıldı.`,
-    );
     console.log(
       `✅ İşlem başarıyla tamamlandı. Toplam ${toplamYazilanKayit} kayıt 'MaliyetTahmin' sayfasına güvenle yazıldı.`,
     );

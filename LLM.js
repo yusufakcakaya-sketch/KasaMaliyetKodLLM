@@ -30,7 +30,6 @@ function buildBatchPrompt(satirlar, costCodes, son200Ornekler) {
       const ipu = String(s.satir[col.kullanici_tahmini] || "").trim();
       return `HARCAMA_${i + 1} (satır_no: ${s.rowNum}):
     envanter: ${env} | kasa: ${kas} | satın_alma: ${sat} | firma: ${frm}${ipu ? ` | kullanıcı_ipucu: ${ipu}` : ""}`;
-    envanter: ${env} | kasa: ${kas} | satın_alma: ${sat} | firma: ${frm}${ipu ? ` | kullanıcı_ipucu: ${ipu}` : ""}`;
     })
     .join("\n");
 
@@ -41,26 +40,12 @@ function buildBatchPrompt(satirlar, costCodes, son200Ornekler) {
       ${fewShotBlock}
       TAHMİN EDİLECEK HARCAMALAR:
       ${satirListesi}
-      MALİYET KODLARI:
-      ${costCodes.join("\n")}
-      ${fewShotBlock}
-      TAHMİN EDİLECEK HARCAMALAR:
-      ${satirListesi}
 
       KURALLAR:
       1. Her harcama için geçmiş harcamalarda aynı firma/açıklama varsa aynı kodu ver.
       2. %70 altı güvende "düşük" işaretle. Sadece listeden seç.
       3. satır_no değerlerini olduğu gibi koru — sırayı değiştirme.
-      KURALLAR:
-      1. Her harcama için geçmiş harcamalarda aynı firma/açıklama varsa aynı kodu ver.
-      2. %70 altı güvende "düşük" işaretle. Sadece listeden seç.
-      3. satır_no değerlerini olduğu gibi koru — sırayı değiştirme.
 
-      YANIT (yalnızca JSON array, başka metin yok, tam ${satirlar.length} eleman):
-      [
-        {"satir_no":..., "kategori":"...","guven":"yüksek/orta/düşük","aciklama":"tek cümle"},
-        ...
-      ]`;
       YANIT (yalnızca JSON array, başka metin yok, tam ${satirlar.length} eleman):
       [
         {"satir_no":..., "kategori":"...","guven":"yüksek/orta/düşük","aciklama":"tek cümle"},
@@ -71,11 +56,6 @@ function buildBatchPrompt(satirlar, costCodes, son200Ornekler) {
 // ============================================================
 // 6. GEMİNİ API ÇAĞRISI
 // ============================================================
-function callGemini(prompt, attempt, test = false) {
-  if (test === true) {
-    console.log("🤖 [BYPASS MODU] API'ye gidilmedi, sahte yanıt üretiliyor...");
-    // 1. ADIM: Regex'i hem 'satir_no' hem de 'satır_no' (Türkçe ı) destekleyecek ve esnek olacak şekilde güncelleyelim
-    const satirNoEslenikleri = [...prompt.matchAll(/sat[iı]r_no:\s*(\d+)/gi)];
 function callGemini(prompt, attempt, test = false) {
   if (test === true) {
     console.log("🤖 [BYPASS MODU] API'ye gidilmedi, sahte yanıt üretiliyor...");
@@ -117,40 +97,8 @@ function callGemini(prompt, attempt, test = false) {
       for (let k = 0; k < grupBoyutu; k++) {
         sahteBatchDizisi.push({
           satir_no: 0, // Burası 0 olacağı için ana pipeline yine 'atladı' diyecektir, ama log bize ipucunu verecek!
-      return JSON.stringify(sahteBatchDizisi);
-    }
-
-    // 2. ADIM (GÜVENLİK DUVARI): Eğer regex yine de bulamazsa, prompt içinde kaç tane HARCAMA_0, HARCAMA_1 geçtiğini sayalım.
-    // Sabit 4751 dönmek yerine, döngüdeki mevcut 'bekleyenler' satırlarını kurtaralım.
-    else {
-      console.warn(
-        "⚠️ Regex yine bulamadı! Prompt içinde dinamik tarama yapılıyor...",
-      );
-
-      // Prompt'un alt kısmında gerçekten ne yazdığını görmek için son 1000 karakteri loglayalım:
-      console.log(
-        "Promptun SONU (Burada satır numaraları olmalı):",
-        prompt.substring(prompt.length - 1000),
-      );
-
-      // Kaç tane harcama istendiğini prompt metninden kabaca çözelim
-      const harcamaSayisiMac = prompt.match(/Aşağıdaki\s+(\d+)\s+harcamayı/i);
-      const grupBoyutu = harcamaSayisiMac ? parseInt(harcamaSayisiMac[1]) : 5;
-
-      // Hata almamak için geçici bir dizi dönelim ama logu inceleyip asıl sorunu (Adım 1'deki verinin gelmeme durumunu) çözeceğiz
-      sahteBatchDizisi = [];
-      for (let k = 0; k < grupBoyutu; k++) {
-        sahteBatchDizisi.push({
-          satir_no: 0, // Burası 0 olacağı için ana pipeline yine 'atladı' diyecektir, ama log bize ipucunu verecek!
           kategori: "TEST_MALIYET_KODU",
           guven: "yüksek",
-          aciklama: "Fallback satırı",
-        });
-      }
-      return JSON.stringify(sahteBatchDizisi);
-    }
-  }
-
           aciklama: "Fallback satırı",
         });
       }
