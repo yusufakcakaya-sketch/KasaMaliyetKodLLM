@@ -100,7 +100,7 @@ function runPredictPipeline() {
         });
       } catch (batchError) {
         console.error(
-          `Batch hatası alındı, bu grup hata durumunda e-tabloya yazılıyor: ${batchError.message}`,
+          "Batch hatası alındı, hata kodu ilgili satıra işleniyor...",
         );
 
         // Hata mesajı içinden sadece HTTP kodunu (örn: 404, 429 vb.) ayıklıyoruz
@@ -129,9 +129,7 @@ function runPredictPipeline() {
           .setValues(nihaiYazilacakVeriler);
 
         toplamYazilanKayit += nihaiYazilacakVeriler.length;
-        console.log(
-          `.. ${nihaiYazilacakVeriler.length} kayıt sayfaya anlık işlendi.`,
-        );
+        console.log(`.. ${nihaiYazilacakVeriler.length} kayıt işlendi.`);
         SpreadsheetApp.flush(); // Değişiklikleri hemen Google Sheets'e yansıtması için zorla
       }
 

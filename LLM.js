@@ -1,58 +1,5 @@
 // ============================================================
-// PROMPT OLUŞTUR — Tek satır için
-// ============================================================
-function buildPrompt(satir, costCodes, son200Ornekler) {
-  const col = CONFIG.col;
-
-  const envanter = String(satir[col.envanter] || "-").trim();
-  const kasaAcikl = String(satir[col.kasa_aciklama] || "-").trim();
-  const satinAcikl = String(satir[col.satinalma_aciklama] || "-").trim();
-  const firma = String(satir[col.firma] || "-").trim();
-  const kullaniciTahmini = String(satir[col.kullanici_tahmini] || "").trim();
-
-  const fewShotBlock =
-    son200Ornekler && son200Ornekler.length > 0
-      ? `\nGEÇMİŞ HARCAMALAR (doğrulanmış referanslar):\n` +
-        son200Ornekler
-          .map((ex, i) => {
-            const cs = CONFIG.colSon200;
-            const kat = String(ex[cs.kategori] || "").trim();
-            const env = String(ex[cs.envanter] || "-").trim();
-            const kas = String(ex[cs.kasa_aciklama] || "-").trim();
-            const sat = String(ex[cs.satinalma_aciklama] || "-").trim();
-            const frm = String(ex[cs.firma] || "-").trim();
-            return `${i + 1}. ${env} | ${kas} | ${sat} | ${frm} → ${kat}`;
-          })
-          .join("\n") +
-        "\n"
-      : "";
-
-  const ipucuBlogu = kullaniciTahmini
-    ? `\nKullanıcı ipucu: "${kullaniciTahmini}" (muhasebe uzmanı değil, doğrula).\n`
-    : "";
-
-  return `Sen deneyimli bir inşaat maliyet kontrolörüsün. Harcamayı aşağıdaki listeden birine ata.
-
-      MALİYET KODLARI:
-      ${costCodes.join("\n")}
-      ${fewShotBlock}
-      TAHMİN EDİLECEK HARCAMA:
-      - Envanter: ${envanter}
-      - Kasa notu: ${kasaAcikl}
-      - Satın alma: ${satinAcikl}
-      - Firma: ${firma}
-      ${ipucuBlogu}
-      KURALLAR:
-      1. Önce geçmiş harcamalarda aynı firma veya açıklamayı ara — varsa aynı kodu ver.
-      2. Yoksa açıklamadan çıkar. %70 altı güvende "düşük" işaretle.
-      3. Sadece listedeki kodlardan seç.
-
-      YANIT (yalnızca JSON, başka metin yok):
-      {"kategori":"...","guven":"yüksek/orta/düşük","aciklama":"tek cümle gerekçe"}`;
-}
-
-// ============================================================
-// PROMPT OLUŞTUR — Batch için (N satır birden)
+// PROMPT OLUŞTUR
 // ============================================================
 function buildBatchPrompt(satirlar, costCodes, son200Ornekler) {
   const col = CONFIG.col;
