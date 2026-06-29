@@ -1,42 +1,3 @@
-// ============================================================
-// YAPILANDIRMA
-// ============================================================
-const CONFIG = {
-  geminiApiKey: "AIzaSyCobTrq3fIcQSLovTLbS7X9GkMy3bOU2oY",
-  geminiModel: "gemini-2.5-flash",
-
-  sheets: {
-    harcamalar: "Harcamalar", // Kaynak: tüm geçmiş + kategori dolu olanlar
-    son200: "Son200", // Referans: LLM'e gönderilen few-shot örnekler
-    tahminler: "Tahminler", // Hedef: LLM'in tahmin edeceği yeni satırlar
-    costCodes: "CostCodes",
-  },
-
-  // Harcamalar / Son200 / Tahminler sütun indeksleri (0-bazlı, aynı format)
-  col: {
-    envanter: 0, // A
-    kasa_aciklama: 1, // B
-    satinalma_aciklama: 2, // C
-    kullanici_tahmini: 3, // D
-    firma: 4, // E
-    //               : 5,  // F — boş
-    kategori: 6, // G
-    guven: 7, // H
-  },
-
-  colSon200: {
-    envanter: 0, // A
-    kasa_aciklama: 1, // B
-    satinalma_aciklama: 2, // C
-    kullanici_tahmini: 3, // D
-    firma: 4, // E
-    kategori: 5, // F
-  },
-
-  son200Boyutu: 200,
-  defaultBatchSize: 5, // 0 = toplu, N = N'li gruplar
-};
-
 // Kaynak dosya ID'leri
 const PROC_SS_ID = "1lYBWsIfqriaox3H-y6M3irufpLibaw9KflPopPfScTI";
 
@@ -182,7 +143,6 @@ function callGemini(prompt, attempt) {
   const raw = res.getContentText();
 
   if (RETRY_CODES.includes(code)) {
-    if (code === 429) throw new Error("RATE_LIMIT");
     if (attempt < MAX_ATTEMPTS) {
       const wait = attempt * 10000;
       console.log(
@@ -191,7 +151,14 @@ function callGemini(prompt, attempt) {
       Utilities.sleep(wait);
       return callGemini(prompt, attempt + 1);
     }
-    throw new Error(`API Hata ${code} — ${MAX_ATTEMPTS} denemede çözülemedi.`);
+    // Maksimum deneme bittikten sonra hata koduna göre spesifik mesaj fırlatıyoruz
+    if (code === 429) {
+      throw new Error("RATE_LIMIT");
+    } else {
+      throw new Error(
+        `API Hata ${code} — ${MAX_ATTEMPTS} denemede çözülemedi.`,
+      );
+    }
   }
 
   if (code !== 200) throw new Error(`API Hata ${code}: ${raw}`);

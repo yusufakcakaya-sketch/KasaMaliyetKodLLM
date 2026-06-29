@@ -34,13 +34,14 @@ function harcamalariAktar() {
   if (!kasaSheet) throw new Error("'Data_Cash' sayfası bulunamadı.");
   if (!procSheet) throw new Error("'Data_Proc' sayfası bulunamadı.");
 
-  // Kasa: D ≠ "FİNANSAL HAREKET" VE E boş
+  // Maliyet kodu hariç harcamalar
   const kasaData = kasaSheet.getDataRange().getValues();
   const filtrelenmis = kasaData
     .slice(1)
     .filter(
       (r) =>
         String(r[3]).trim() !== "FİNANSAL HAREKET" &&
+        String(r[3]).trim() !== "DÖVİZ-USD-LYD" &&
         String(r[4]).trim() === "",
     );
 
@@ -154,11 +155,13 @@ function guncelleSon200() {
   if (!kasaSheet) throw new Error("'Data_Cash' sayfası bulunamadı.");
   if (!procSheet) throw new Error("'Data_Proc' sayfası bulunamadı.");
 
-  // --- Kasa: D ≠ "FİNANSAL HAREKET" VE E dolu ---
+  // Maliyet kodu alan harcamalar
   const kasaData = kasaSheet.getDataRange().getValues();
   const filtrelenmis = kasaData.slice(1).filter(
     (r) =>
-      String(r[3]).trim() !== "FİNANSAL HAREKET" && String(r[4]).trim() !== "", // E dolu = maliyet kodu var
+      String(r[3]).trim() !== "FİNANSAL HAREKET" &&
+      String(r[3]).trim() !== "DÖVİZ-USD-LYD" &&
+      String(r[4]).trim() !== "", // E dolu = maliyet kodu var
   );
 
   if (filtrelenmis.length === 0) {
