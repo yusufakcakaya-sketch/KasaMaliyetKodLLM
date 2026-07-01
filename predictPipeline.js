@@ -14,7 +14,10 @@ function runPredictPipeline() {
 
     const kasaSheet = kasaSS.getSheetByName("Data_Cash");
     const procSheet = procSS.getSheetByName("Data_Proc");
+
+    // Yazılacak İKİ hedef sayfa: aktif tablo + kasa tablosu
     const maliyetTahminSheet = getOrCreateSheet(ss, "MaliyetTahmin");
+    const maliyetTahminSheetKasa = getOrCreateSheet(kasaSS, "MaliyetTahmin");
 
     if (!kasaSheet || !procSheet)
       throw new Error("Kaynak sayfalar yüklenemedi.");
@@ -23,14 +26,21 @@ function runPredictPipeline() {
     const procData = procSheet.getDataRange().getValues();
 
     // 2. Mükerrer kaydı önlemek için hedef sayfadaki mevcut işlemId'leri (A sütunu) hafızaya al
-    const mevcutTahminler =
-      maliyetTahminSheet.getLastRow() > 0
-        ? maliyetTahminSheet
+    // NOT: Mükerrer kontrolünü iki sayfanın birleşimine göre yapıyoruz ki
+    // herhangi birinde zaten yazılmış bir kayıt tekrar üretilmesin.
+    const okuMevcutIdler = (sheet) =>
+      sheet.getLastRow() > 0
+        ? sheet
             .getDataRange()
             .getValues()
             .slice(1)
             .map((r) => String(r[0]).trim())
         : [];
+
+    const mevcutTahminler = [
+      ...okuMevcutIdler(maliyetTahminSheet),
+      ...okuMevcutIdler(maliyetTahminSheetKasa),
+    ];
     const islenmisIdSet = new Set(mevcutTahminler);
 
     // ============================================================
@@ -49,14 +59,18 @@ function runPredictPipeline() {
     }
 
     // Başlık satırı kontrolünü döngü öncesine alıyoruz (Eğer sayfa boşsa başlığı hemen yaz)
-    if (maliyetTahminSheet.getLastRow() === 0) {
-      maliyetTahminSheet.appendRow([
-        "İşlem ID",
-        "Kasa Açıklaması",
-        "Maliyet Kodu Tahmini",
-        "Güven",
-      ]);
-    }
+    const baslikYaz = (sheet) => {
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow([
+          "İşlem ID",
+          "Kasa Açıklaması",
+          "Maliyet Kodu Tahmini",
+          "Güven",
+        ]);
+      }
+    };
+    baslikYaz(maliyetTahminSheet);
+    baslikYaz(maliyetTahminSheetKasa);
 
     // 3. Hafızada Tahminleme ve Gruplama (Batch) İşlemleri
     const batchSize = CONFIG.defaultBatchSize || 5;
@@ -121,16 +135,18 @@ function runPredictPipeline() {
         });
       }
 
-      // 4. Mevcut Batch Sonuçlarını ANLIK Olarak "MaliyetTahmin" Sayfasına Yazma
+      // 4. Mevcut Batch Sonuçlarını ANLIK Olarak İKİ "MaliyetTahmin" Sayfasına da Yazma
       if (nihaiYazilacakVeriler.length > 0) {
-        const baslangicSatiri = maliyetTahminSheet.getLastRow() + 1;
-        maliyetTahminSheet
-          .getRange(baslangicSatiri, 1, nihaiYazilacakVeriler.length, 4)
-          .setValues(nihaiYazilacakVeriler);
+        [maliyetTahminSheet, maliyetTahminSheetKasa].forEach((sheet) => {
+          const baslangicSatiri = sheet.getLastRow() + 1;
+          sheet
+            .getRange(baslangicSatiri, 1, nihaiYazilacakVeriler.length, 4)
+            .setValues(nihaiYazilacakVeriler);
+        });
 
         toplamYazilanKayit += nihaiYazilacakVeriler.length;
         console.log(`.. ${nihaiYazilacakVeriler.length} kayıt işlendi.`);
-        SpreadApp.flush(); // Değişiklikleri hemen Google Sheets'e yansıtması için zorla
+        SpreadsheetApp.flush(); // Değişiklikleri hemen Google Sheets'e yansıtması için zorla
       }
 
       if (i + batchSize < bekleyenler.length) {
@@ -139,7 +155,7 @@ function runPredictPipeline() {
     }
 
     console.log(
-      `✅ İşlem başarıyla tamamlandı. Toplam ${toplamYazilanKayit} kayıt 'MaliyetTahmin' sayfasına güvenle yazıldı.`,
+      `✅ İşlem başarıyla tamamlandı. Toplam ${toplamYazilanKayit} kayıt her iki 'MaliyetTahmin' sayfasına da güvenle yazıldı.`,
     );
   } catch (error) {
     console.error("Pipeline hatası:", error.toString());

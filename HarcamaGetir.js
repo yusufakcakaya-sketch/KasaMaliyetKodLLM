@@ -34,29 +34,44 @@ function harcamaGetir(kasaData, procData, islenmisIdSet) {
   });
 
   const eklenecek = [];
+  let eslesenSayisi = 0;
+  let eslesmeyenSayisi = 0;
+
   // Kasa datasındaki orijinal satır takibi için index + 2 kullanıyoruz
   kasaData.slice(1).forEach((r, idx) => {
     const kod = String(r[9]).trim();
-    if (!kod || !kasaMap[kod] || !procMap[kod]) return;
+    if (!kod || !kasaMap[kod]) return;
 
     // Mükerrer kontrolü: MaliyetTahmin sayfasında zaten varsa atla
     if (islenmisIdSet.has(kod)) return;
 
     const proc = procMap[kod];
 
+    if (proc) {
+      eslesenSayisi++;
+    } else {
+      eslesmeyenSayisi++;
+    }
+
     // Klasik formatta array yapısını oluştur ve sanal rowNum ekle
     eklenecek.push({
       rowNum: idx + 2,
       islemId: kod,
       satir: [
-        proc.envanter, // A — envanter
+        proc ? proc.envanter : "-", // A — envanter
         kasaMap[kod].kasaAciklama, // B — kasa açıklaması
-        proc.satinAlma, // C — satın alma açıklaması
-        proc.tahmin, // D — kullanıcı tahmini
+        proc ? proc.satinAlma : "-", // C — satın alma açıklaması
+        proc ? proc.tahmin : "-", // D — kullanıcı tahmini
         kasaMap[kod].firma, // E — firma
       ],
     });
   });
+
+  console.log(
+    `Kasada tahmin edilecek veri sayısı=${filtrelenmis.length}, ` +
+      `Tahmin edilecek verilerin proc karşılığı bulunan sayısı=${eslesenSayisi}, ` +
+      `Proc karşılığı bulunamayan sayısı=${eslesmeyenSayisi}`,
+  );
 
   return eklenecek;
 }
